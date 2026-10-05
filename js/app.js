@@ -1009,7 +1009,7 @@ var VISTAS_TAB = {
     } else {
       var lk = st.linkFirma;
       var lkViejo = lk && lk.hash !== hashActual;
-      h += '<p class="ayuda">1) Firmá vos primero. 2) Tocá «Crear link para firmar» y esperá a que diga «Listo» (más o menos 1 minuto). 3) Mandalo por WhatsApp. 4) El cliente toca el link, firma con el dedo y te devuelve el archivo con el botón verde. 5) Lo importás acá con «Importar contrato firmado».</p>';
+      h += '<p class="ayuda">1) Firmá vos primero. 2) Tocá «Crear link para firmar» y esperá a que diga «Listo» (la primera vez tarda alrededor de 1 minuto; después, unos segundos). 3) Mandalo por WhatsApp. 4) El cliente toca el link, firma con el dedo y te devuelve el archivo con el botón verde. 5) Lo importás acá con «Importar contrato firmado».</p>';
       if (lk) h += '<div class="aviso' + (lkViejo ? " mal" : " bien") + '">' + (lkViejo ? "<b>Cambiaste el contrato después de crear el link.</b> Creá un link nuevo antes de mandarlo." : "Link creado el " + esc(fechaHoraLocal(lk.fecha)) + ". Cuando firmen todos, borralo.") + "</div>";
       h += '<div class="fila-botones"><button class="btn primario" data-accion="crear-link">' + (lk ? "Crear link nuevo" : "Crear link para firmar") + "</button>";
       if (lk && !lkViejo) h += '<button class="btn" data-accion="link-wa" style="background:#25d366;color:#04140a">Enviar link por WhatsApp</button><button class="btn" data-accion="copiar-link">Copiar link</button>';
@@ -1491,10 +1491,12 @@ function crearLinkAccion() {
     c.linkFirma = link;
     guardar();
     if (anterior && anterior.ruta) borrarLinkFirma(cfg, anterior).catch(function () {});
-    estado("Publicando… GitHub tarda alrededor de 1 minuto. Dejá esta ventana abierta.");
-    return esperarLinkPublicado(link.url, function (n) { estado("Publicando… GitHub tarda alrededor de 1 minuto. Dejá esta ventana abierta. (" + n * 5 + " s)"); });
+    estado("Revisando que el link abra…");
+    return esperarLinkPublicado(link.url, function (n) {
+      if (n > 1) estado("GitHub está publicando la página para firmar. Pasa solo la primera vez y tarda alrededor de 1 minuto. Dejá esta ventana abierta. (" + (n - 1) * 5 + " s)");
+    });
   }).then(function (ok) {
-    estado(ok ? "<b>¡Listo!</b> El link ya funciona. Mandalo por WhatsApp." : "GitHub todavía está publicando. Podés mandarlo igual: si el cliente ve un error, que espere un minuto y lo abra de nuevo.", ok ? "bien" : "info");
+    estado(ok ? "<b>¡Listo!</b> El link ya funciona. Mandalo por WhatsApp." : "GitHub todavía está publicando la página para firmar (pasa solo la primera vez). Podés mandarlo igual: si el cliente ve un error, que espere unos minutos y lo abra de nuevo.", ok ? "bien" : "info");
     var b = $("link-botones");
     if (b && st === c) b.innerHTML = botonesLinkModal();
     if (tabActual === "firmas") renderTab();

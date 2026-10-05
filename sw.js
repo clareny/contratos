@@ -1,7 +1,7 @@
 /* Deja abrir el programa sin internet. Siempre pide primero la versión publicada, así los cambios
    llegan solos; sin conexión usa la última copia guardada. GitHub (api.github.com) nunca pasa por acá. */
 
-var CACHE = "contratos-v1";
+var CACHE = "contratos-v2";
 var ARCHIVOS = [
   "./",
   "index.html",
