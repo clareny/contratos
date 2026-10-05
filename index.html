@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clareny · Contratos</title>
+  <link rel="icon" type="image/png" href="assets/logo-clareny.png">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="top">
+    <img class="logo-cara" src="assets/logo-clareny.png" alt="Clareny">
+    <div class="marca"><b>CLARENY</b><span>contratos de produccion musical</span></div>
+    <div class="acciones">
+      <button class="btn" id="btn-nuevo" type="button" title="Crear un contrato nuevo">+ Nuevo</button>
+      <button class="btn" id="btn-lista" type="button" title="Abrir, duplicar o borrar contratos">Mis contratos</button>
+      <button class="btn primario" id="btn-consolidar" type="button" title="Exportar a PDF, Word o archivo para firmar">Consolidar</button>
+      <img class="logo-gk" src="assets/logo-graykids.png" alt="Graykids Records">
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel">
+      <nav class="tabs" id="tabs"></nav>
+      <div class="tab-body" id="tab-body"></div>
+    </aside>
+    <section class="vista">
+      <div class="vista-toolbar">
+        <div class="estado"><span class="punto"></span><span id="estado-texto">Guardado automáticamente</span><span id="estado-sync" class="estado-sync"></span></div>
+        <button class="btn chico icono" id="zoom-menos" type="button" title="Alejar">−</button>
+        <span id="zoom-valor">100%</span>
+        <button class="btn chico icono" id="zoom-mas" type="button" title="Acercar">+</button>
+        <button class="btn chico" id="zoom-ajustar" type="button">Ajustar</button>
+      </div>
+      <div class="preview-scroll" id="preview-scroll"><div id="doc-root"></div></div>
+    </section>
+  </main>
+
+  <div class="modal oculto" id="modal"><div class="modal-caja" id="modal-caja"></div></div>
+  <div id="toast"></div>
+  <input type="file" id="input-archivo" hidden>
+
+  <script src="vendor/docx.iife.js"></script>
+  <script src="js/logos.js"></script>
+  <script src="js/fuentes.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/firma-core.js"></script>
+  <script src="js/contrato.js"></script>
+  <script src="js/export-word.js"></script>
+  <script src="js/paquete-firma.js"></script>
+  <script src="js/link-firma.js"></script>
+  <script src="js/sync.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
