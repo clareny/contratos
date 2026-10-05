@@ -30,14 +30,21 @@ function apiRepo(d) { return "https://api.github.com/repos/" + encodeURIComponen
 function cabecerasGitHub(d) { return { Authorization: "Bearer " + d.token, Accept: "application/vnd.github+json", "Content-Type": "application/json" }; }
 function urlPages(d) { return "https://" + d.usuario.toLowerCase() + ".github.io/" + d.repo + "/"; }
 
-/* Nunca se sube nada al repositorio de una web con dominio propio (por ejemplo clareny.com). */
+/* Nunca se sube nada al repositorio de una web con dominio propio (por ejemplo clareny.com).
+   La dirección de GitHub Pages distingue mayúsculas: se usa el nombre exacto del repositorio («Firmas» ≠ «firmas»). */
 function verificarRepoSoloFirmas(d) {
   var aparte = " Por seguridad el programa no sube nada ahí. Creá un repositorio aparte, solo para firmas (por ejemplo «firmas»).";
-  if (d.repo.toLowerCase() === d.usuario.toLowerCase() + ".github.io") return Promise.reject(new Error("«" + d.repo + "» es el repositorio principal de tu cuenta." + aparte));
-  return fetch(apiRepo(d) + "/pages", { headers: cabecerasGitHub(d) }).catch(sinConexion).then(function (r) {
-    if (r.status === 404) return { pages: false };
-    if (!r.ok) return { pages: null };
-    return r.json().then(function (p) { return { pages: true, cname: p.cname }; });
+  var repo = {};
+  return fetch(apiRepo(d), { headers: cabecerasGitHub(d) }).catch(sinConexion).then(respuestaGitHub).then(function (r) {
+    repo = r;
+    if (r.name) d.repo = r.name;
+    if (d.repo.toLowerCase() === d.usuario.toLowerCase() + ".github.io") throw new Error("«" + d.repo + "» es el repositorio principal de tu cuenta." + aparte);
+    return fetch(apiRepo(d) + "/pages", { headers: cabecerasGitHub(d) }).catch(sinConexion);
+  }).then(function (r) {
+    var base = { privado: !!repo.private };
+    if (r.status === 404) return Object.assign(base, { pages: repo.has_pages ? null : false });
+    if (!r.ok) return Object.assign(base, { pages: repo.has_pages === false ? false : null });
+    return r.json().then(function (p) { return Object.assign(base, { pages: true, cname: p.cname }); });
   }).then(function (info) {
     if (info.cname) throw new Error("El repositorio «" + d.repo + "» publica la web " + info.cname + "." + aparte);
     return fetch(urlPages(d) + "?v=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.url || ""; }, function () { return ""; }).then(function (final) {
@@ -164,10 +171,8 @@ function probarLinkFirma(cfg) {
   var d = datosLink(cfg);
   if (!d.usuario) return Promise.reject(new Error("Falta tu usuario de GitHub."));
   if (!d.token) return Promise.reject(new Error("Falta guardar el token."));
-  return fetch(apiRepo(d), { headers: cabecerasGitHub(d) }).catch(sinConexion).then(respuestaGitHub).then(function (repo) {
-    if (repo.private) throw new Error("El repositorio es privado. GitHub Pages gratis necesita que sea público (los contratos van cifrados igual).");
-    return verificarRepoSoloFirmas(d);
-  }).then(function (info) {
+  return verificarRepoSoloFirmas(d).then(function (info) {
+    if (info.privado) throw new Error("El repositorio es privado. GitHub Pages gratis necesita que sea público (los contratos van cifrados igual).");
     if (info.pages === false) throw new Error("Falta activar GitHub Pages: en el repositorio, Settings → Pages → Branch: main → Save.");
     return urlPages(d);
   });
