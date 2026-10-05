@@ -312,7 +312,7 @@ async function exportarWord(st, cfg, hash) {
     if (f.key === "productor") filas.push(["IPI / " + (p.pro || "PRO"), p.ipi]);
     filas.push(["Email", (fi && fi.email) || f.email], ["Fecha", fi && fi.fecha ? fechaHoraLocal(fi.fecha) : "____ / ____ / ______"]);
     listaKV(filas).forEach(function (x) { partes.push(x); });
-    if (fi && fi.fecha) partes.push(par([t("Firmado electrónicamente · Código del documento: " + (fi.hash || "").slice(0, 16), { size: 14, color: CIAN })], { before: 60, after: 0 }));
+    if (fi && fi.fecha) partes.push(par([t((fi.metodo === "pdf" ? "Firmado sobre el PDF del contrato" : "Firmado electrónicamente") + " · Código del documento: " + (fi.hash || "").slice(0, 16), { size: 14, color: CIAN })], { before: 60, after: 0 }));
     return celda(partes, { w: 50 });
   }
   var filasD = [];
@@ -329,7 +329,7 @@ async function exportarWord(st, cfg, hash) {
     var filasR = [filaHead(["Firmante", "Documento", "Email", "Método", "Fecha y hora", "Dispositivo", "Código doc."])];
     firmados.forEach(function (f) {
       var fi = st.firmas[f.key];
-      filasR.push(filaSimple([(fi.nombre || f.nombre) + " — " + f.rol, fi.documento || f.documento || "", fi.email || f.email || "", fi.metodo === "remota" ? "Remota" : "En pantalla",
+      filasR.push(filaSimple([(fi.nombre || f.nombre) + " — " + f.rol, fi.documento || f.documento || "", fi.email || f.email || "", fi.metodo === "pdf" ? "Sobre el PDF" : fi.metodo === "remota" ? "Remota" : "En pantalla",
         fechaHoraLocal(fi.fecha), fi.dispositivo || "", (fi.hash || "").slice(0, 16)]));
     });
     hijos.push(tabla(filasR));

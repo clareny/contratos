@@ -1206,6 +1206,13 @@ function filaDL(etq, v) {
 
 function marcar(v) { return v ? "☒" : "☐"; }
 
+function textoMetodoFirma(fi, forma) {
+  var m = fi && fi.metodo;
+  if (forma === "sello") return m === "pdf" ? "Firmado sobre el PDF del contrato" : "Firmado electrónicamente (" + (m === "remota" ? "firma remota" : "firma en pantalla") + ")";
+  if (forma === "tabla") return m === "pdf" ? "Sobre el PDF" + (fi.pdf && fi.pdf.huella ? " (huella del archivo: " + fi.pdf.huella.slice(0, 16) + ")" : "") : m === "remota" ? "Remota (archivo de firma)" : "En pantalla";
+  return m === "pdf" ? "firmado en PDF" : m === "remota" ? "firma remota" : "en pantalla";
+}
+
 function renderFirmaBox(f, firma, cfg) {
   var img = firma && firma.img ? '<img src="' + firma.img + '" alt="Firma">' : "";
   var html = '<div class="firma-box" data-signer="' + f.key + '">';
@@ -1220,7 +1227,7 @@ function renderFirmaBox(f, firma, cfg) {
   html += '<div class="fila"><b>Email:</b><span>' + vacio(firma && firma.email ? firma.email : f.email, "________________") + "</span></div>";
   html += '<div class="fila"><b>Fecha:</b><span class="firma-fecha">' + (firma && firma.fecha ? esc(fechaHoraLocal(firma.fecha)) : '<span class="vacio">____ / ____ / ______</span>') + "</span></div>";
   if (firma && firma.fecha) {
-    html += '<div class="firma-sello">Firmado electrónicamente (' + esc(firma.metodo === "remota" ? "firma remota" : "firma en pantalla") + ") · Código del documento: " + esc((firma.hash || "").slice(0, 16)) + "</div>";
+    html += '<div class="firma-sello">' + esc(textoMetodoFirma(firma, "sello")) + " · Código del documento: " + esc((firma.hash || "").slice(0, 16)) + "</div>";
   }
   html += "</div>";
   return html;
@@ -1233,7 +1240,7 @@ function renderRegistroFirmas(st, lista) {
   filas.forEach(function (f) {
     var fi = st.firmas[f.key];
     html += "<tr><td>" + esc(fi.nombre || f.nombre) + "<br><span class=\"vacio\">" + esc(f.rol) + "</span></td><td>" + esc(fi.documento || f.documento || "") + "</td><td>" + esc(fi.email || f.email || "") +
-      "</td><td>" + (fi.metodo === "remota" ? "Remota (archivo de firma)" : "En pantalla") + "</td><td>" + esc(fechaHoraLocal(fi.fecha)) + "</td><td>" + esc(fi.dispositivo || "") + "</td><td><code>" + esc((fi.hash || "").slice(0, 16)) + "</code></td></tr>";
+      "</td><td>" + esc(textoMetodoFirma(fi, "tabla")) + "</td><td>" + esc(fechaHoraLocal(fi.fecha)) + "</td><td>" + esc(fi.dispositivo || "") + "</td><td><code>" + esc((fi.hash || "").slice(0, 16)) + "</code></td></tr>";
   });
   return html + "</tbody></table>";
 }

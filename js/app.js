@@ -991,7 +991,7 @@ var VISTAS_TAB = {
     lista.forEach(function (f) {
       var fi = st.firmas[f.key];
       h += '<div class="tarjeta"><div class="firmante"><div><div class="tarjeta-head" style="margin-bottom:4px"><span class="tit">' + esc(f.rol) + "</span>" + (fi && fi.fecha ? '<span class="pill on">firmado</span>' : '<span class="pill">pendiente</span>') + "</div>";
-      h += '<div class="estado-firma">' + esc((fi && fi.nombre) || f.nombre || "(sin nombre cargado)") + (fi && fi.fecha ? " · " + esc(fechaHoraLocal(fi.fecha)) + " · " + (fi.metodo === "remota" ? "firma remota" : "en pantalla") : "") + "</div></div>";
+      h += '<div class="estado-firma">' + esc((fi && fi.nombre) || f.nombre || "(sin nombre cargado)") + (fi && fi.fecha ? " · " + esc(fechaHoraLocal(fi.fecha)) + " · " + textoMetodoFirma(fi) : "") + "</div></div>";
       h += fi && fi.img ? '<img src="' + fi.img + '" alt="firma">' : "<span></span>";
       h += "</div><div class=\"fila-botones\" style=\"margin-bottom:0\">";
       h += '<button class="btn chico primario" data-accion="firmar" data-key="' + f.key + '">' + (fi && fi.fecha ? "Volver a firmar" : "Firmar en pantalla") + "</button>";
@@ -1017,8 +1017,8 @@ var VISTAS_TAB = {
       h += "</div>";
     }
     h += '<h3 class="sec">Sin internet: PDF</h3>';
-    h += '<p class="ayuda">Si no podés usar el link, el cliente puede firmar el PDF con «Marcación» del iPhone. Te devuelve el PDF firmado: esa es tu copia (no se importa al programa).</p>';
-    h += '<div class="fila-botones"><button class="btn" data-accion="pdf-iphone">Preparar PDF para firmar</button><button class="btn" data-accion="copiar-iphone">Copiar instrucciones del PDF</button></div>';
+    h += '<p class="ayuda">Si no podés usar el link, el cliente puede firmar el PDF con «Marcación» del iPhone. Cuando te devuelva el PDF firmado, tocá «Importar PDF firmado»: el programa reconoce el contrato, copia las firmas a sus recuadros y lo deja firmado. Guardá también ese PDF en tu Drive.</p>';
+    h += '<div class="fila-botones"><button class="btn" data-accion="pdf-iphone">Preparar PDF para firmar</button><button class="btn" data-accion="copiar-iphone">Copiar instrucciones del PDF</button><button class="btn violeta" data-accion="importar-pdf-firmado">Importar PDF firmado</button></div>';
     h += '<div class="aviso">Código de verificación actual del documento:<br><code style="word-break:break-all;color:var(--mint)">' + esc(hashActual) + "</code></div>";
     return h;
   },
@@ -1323,7 +1323,7 @@ function confirmarFirma(key) {
 
 /* ---------- archivos ---------- */
 
-function pedirArchivo(accept, cb) {
+function pedirArchivo(accept, cb, comoBytes) {
   var input = $("input-archivo");
   input.value = "";
   input.accept = accept;
@@ -1331,10 +1331,88 @@ function pedirArchivo(accept, cb) {
     var f = input.files[0];
     if (!f) return;
     var r = new FileReader();
-    r.onload = function () { cb(String(r.result), f.name); };
-    r.readAsText(f, "utf-8");
+    r.onload = function () { cb(comoBytes ? new Uint8Array(r.result) : String(r.result), f.name); };
+    if (comoBytes) r.readAsArrayBuffer(f); else r.readAsText(f, "utf-8");
   };
   input.click();
+}
+
+function importarArchivoFirmado(bytes, nombre) {
+  if (esPdf(bytes)) return importarPdfFirmado(bytes, nombre);
+  importarFirmado(new TextDecoder("utf-8").decode(bytes));
+}
+
+var pdfFirmado = null;
+
+async function importarPdfFirmado(bytes, archivo) {
+  if (!esPdf(bytes)) return toast("Ese archivo no es un PDF.");
+  toast("Leyendo el PDF firmado…");
+  var lectura;
+  try { lectura = await leerPdfFirmado(bytes); } catch (e) { console.error(e); return toast(e.message || "No se pudo leer el PDF."); }
+  try {
+    var id = idEnPdf(lectura, Object.keys(contratos));
+    if (id && !contratos[id]) return toast("Este PDF es del contrato " + id + ", que no está en este aparato. Sincronizá y probá de nuevo.");
+    if (id && id !== st.id) { st = contratos[id]; renderTodo(); }
+    if (!id && !confirm("No encontré el número de contrato en el PDF. ¿Es el PDF firmado del contrato " + st.id + "?")) return;
+    var firmasPdf = await firmasEnPdf(lectura, firmantes(st, cfg));
+    pdfFirmado = { id: st.id, idEnPdf: !!id, archivo: archivo, huella: lectura.huella, codigo: codigoEnPdf(lectura), fecha: lectura.fecha, dispositivo: dispositivoPdf(lectura.programa), firmas: firmasPdf };
+    modalPdfFirmado();
+  } catch (e) {
+    console.error(e);
+    toast("No se pudo leer el PDF: " + e.message);
+  } finally {
+    lectura.doc.destroy();
+  }
+}
+
+function modalPdfFirmado() {
+  var p = pdfFirmado, lista = firmantes(st, cfg);
+  var h = '<h2>PDF FIRMADO <button class="btn chico" data-accion="cerrar">Cerrar</button></h2>';
+  h += '<div class="aviso' + (p.idEnPdf ? " bien" : "") + '">Contrato <b>' + esc(st.id) + "</b>" + (p.idEnPdf ? " ✔" : " (elegido por vos: el PDF no dice el número)") + "</div>";
+  if (p.codigo === hashActual) h += '<div class="aviso bien">El código de verificación del PDF coincide ✔ Es la misma versión del contrato.</div>';
+  else if (p.codigo) h += '<div class="aviso mal"><b>El PDF es de otra versión del contrato.</b> Su código empieza con <code>' + esc(p.codigo.slice(0, 16)) + "</code> y el de ahora con <code>" + esc(hashActual.slice(0, 16)) + "</code>. Si lo importás, esas firmas quedan marcadas como de otra versión.</div>";
+  else h += '<div class="aviso">No pude leer el código de verificación del PDF. Revisá que sea el último PDF que mandaste.</div>';
+  if (lista.some(function (f) { var fi = st.firmas[f.key]; return fi && fi.pdf && fi.pdf.huella === p.huella; })) h += '<div class="aviso info">Este PDF ya se importó antes.</div>';
+  var pendientes = lista.filter(function (f) { return !(st.firmas[f.key] && st.firmas[f.key].fecha); });
+  if (pendientes.length && !pendientes.some(function (f) { return (p.firmas[f.key] || {}).img; })) h += '<div class="aviso mal">No encontré firmas dibujadas en los recuadros. ¿Seguro que es el PDF que te devolvieron firmado? Si firmaron en otro lugar de la hoja, marcá quién firmó igual.</div>';
+  h += '<p class="ayuda">Marcá quién firmó en el PDF:</p>';
+  lista.forEach(function (f) {
+    var fi = st.firmas[f.key], r = p.firmas[f.key] || {};
+    h += '<div class="tarjeta"><div class="firmante"><div>';
+    if (fi && fi.fecha) {
+      h += "<b>" + esc(f.rol) + '</b><div class="estado-firma">Ya firmó: ' + esc(fechaHoraLocal(fi.fecha)) + " · " + textoMetodoFirma(fi) + "</div></div><span></span>";
+    } else {
+      h += '<label class="chk"><input type="checkbox" data-firma-pdf="' + f.key + '"' + (r.img ? " checked" : "") + "><span><b>" + esc(f.rol) + "</b>" + (f.nombre ? " · " + esc(f.nombre) : "") + "</span></label>";
+      h += '<div class="estado-firma">' + (r.img ? "Firma encontrada en su recuadro" : r.caja ? "No encontré firma en su recuadro" : "No encontré su recuadro en el PDF") + "</div></div>";
+      h += r.img ? '<img src="' + r.img + '" alt="firma">' : "<span></span>";
+    }
+    h += "</div></div>";
+  });
+  h += '<div class="fila-botones"><button class="btn primario" data-accion="guardar-pdf-firmado">Guardar firmas</button><button class="btn" data-accion="cerrar">Cancelar</button></div>';
+  h += '<p class="ayuda">Guardá el PDF firmado en tu Drive: es el original con las firmas a mano. El programa anota su huella (<code>' + esc(p.huella.slice(0, 16)) + "</code>) para poder comprobar después que es ese mismo archivo.</p>";
+  abrirModal(h);
+}
+
+function guardarPdfFirmado() {
+  var p = pdfFirmado;
+  if (!p || p.id !== st.id) return cerrarModal();
+  var marcados = Array.prototype.map.call(document.querySelectorAll("[data-firma-pdf]:checked"), function (el) { return el.getAttribute("data-firma-pdf"); });
+  if (!marcados.length) return toast("Marcá quién firmó.");
+  var lista = firmantes(st, cfg);
+  lista.forEach(function (f) {
+    if (marcados.indexOf(f.key) < 0) return;
+    st.firmas[f.key] = {
+      img: (p.firmas[f.key] || {}).img || "", nombre: f.nombre || "", documento: f.documento || "", email: f.email || "",
+      fecha: p.fecha || new Date().toISOString(), metodo: "pdf", dispositivo: p.dispositivo, hash: p.codigo || hashActual,
+      pdf: { archivo: p.archivo || "", huella: p.huella },
+    };
+  });
+  pdfFirmado = null;
+  cerrarModal();
+  alCambiar(true);
+  setTimeout(renderTab, 30);
+  var faltan = lista.filter(function (f) { return !(st.firmas[f.key] && st.firmas[f.key].fecha); });
+  toast(marcados.length + " firma(s) del PDF guardada(s) ✔" + (faltan.length ? " Falta: " + faltan.map(function (f) { return f.rol; }).join(", ") : " El contrato quedó firmado."));
 }
 
 function importarFirmado(texto) {
@@ -1641,7 +1719,9 @@ var ACCIONES = {
   "borrar-mi-firma": function () { cfg.firmaProductor = null; },
   paquete: function () { paqueteAccion(); return "sin-render"; },
   "paquete-wa": function () { paqueteWhatsAppAccion(); return "sin-render"; },
-  "importar-firmado": function () { pedirArchivo(".html,text/html", importarFirmado); return "sin-render"; },
+  "importar-firmado": function () { pedirArchivo(".html,text/html,.pdf,application/pdf", importarArchivoFirmado, true); return "sin-render"; },
+  "importar-pdf-firmado": function () { pedirArchivo(".pdf,application/pdf", importarPdfFirmado, true); return "sin-render"; },
+  "guardar-pdf-firmado": function () { guardarPdfFirmado(); return "sin-render"; },
   "exportar-pdf": function () { exportarPdfAccion(); return "sin-render"; },
   "pdf-iphone": function () { pdfIphoneAccion(); return "sin-render"; },
   "crear-link": function () { crearLinkAccion(); return "sin-render"; },

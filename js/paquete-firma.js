@@ -274,7 +274,7 @@ function generarPaqueteFirma(st, cfg, hash) {
   var msg = encodeURIComponent(textoMsg);
   datos.wa = wa;
   datos.msgWa = textoMsg;
-  var funciones = [nombrePropio, sha256, textoParaHash, crearPadFirma, describirDispositivo, fechaHoraLocal, esc, vacio, renderFirmaBox, renderRegistroFirmas, etiquetaFirmante]
+  var funciones = [nombrePropio, sha256, textoParaHash, crearPadFirma, describirDispositivo, fechaHoraLocal, esc, vacio, textoMetodoFirma, renderFirmaBox, renderRegistroFirmas, etiquetaFirmante]
     .map(function (f) { return f.toString(); }).join("\n\n");
 
   var h = "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\">";

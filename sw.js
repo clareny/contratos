@@ -1,7 +1,7 @@
 /* Deja abrir el programa sin internet. Siempre pide primero la versión publicada, así los cambios
    llegan solos; sin conexión usa la última copia guardada. GitHub (api.github.com) nunca pasa por acá. */
 
-var CACHE = "contratos-v2";
+var CACHE = "contratos-v3";
 var ARCHIVOS = [
   "./",
   "index.html",
@@ -17,6 +17,7 @@ var ARCHIVOS = [
   "js/paquete-firma.js",
   "js/link-firma.js",
   "js/sync.js",
+  "js/importar-pdf.js",
   "js/app.js",
   "assets/logo-clareny.png",
   "assets/logo-graykids.png",
