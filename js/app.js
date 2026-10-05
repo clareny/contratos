@@ -1426,9 +1426,17 @@ function pdfIphoneAccion() {
   exportarPdfAccion(nombreArchivo() + "_FIRMAR_EN_PDF");
 }
 
+var editandoLink = false;
+
 function seccionConfigLink() {
   var listo = linkConfigurado(cfg);
   var h = '<h3 class="sec" id="config-link">Link para firmar (iPhone)</h3>';
+  if (listo && !editandoLink) {
+    var d = datosLink(cfg);
+    h += '<div class="aviso bien"><b>Link para firmar configurado ✔</b> Usuario <code>' + esc(d.usuario) + "</code>, repositorio <code>" + esc(d.repo) + "</code>. El token ya está guardado en este aparato: no lo tenés que volver a poner.</div>";
+    h += '<div class="fila-botones"><button class="btn" data-accion="probar-link">Probar</button><button class="btn" data-accion="editar-link">Cambiar usuario o token</button></div>';
+    return h;
+  }
   h += '<p class="ayuda">Para que el cliente firme con el dedo desde un link, también en iPhone. Es gratis y se hace <b>una sola vez</b>. El contrato se sube <b>cifrado</b> a tu GitHub: sin el link completo nadie lo puede leer. clareny.com no se toca.</p>';
   if (!listo) {
     h += '<ol class="pasos-link">' +
@@ -1440,7 +1448,8 @@ function seccionConfigLink() {
   }
   h += '<div class="grid2">' + campo("Tu usuario de GitHub", "cfg:linkFirma.usuario", { ph: "ej: clareny" }) + campo("Repositorio", "cfg:linkFirma.repo", { ph: "firmas" });
   h += '<label class="f span2"><span>Token de GitHub' + (tokenLink() ? " (guardado ✔)" : "") + '</span><input type="password" id="link-token" autocomplete="off" placeholder="' + (tokenLink() ? "Pegá uno nuevo solo si querés cambiarlo" : "github_pat_…") + '"></label></div>';
-  h += '<div class="fila-botones"><button class="btn primario" data-accion="guardar-token">Guardar token</button><button class="btn" data-accion="probar-link">Probar</button>' + (tokenLink() ? '<button class="btn peligro" data-accion="borrar-token">Borrar token</button>' : "") + "</div>";
+  h += '<div class="fila-botones"><button class="btn primario" data-accion="guardar-token">Guardar token</button><button class="btn" data-accion="probar-link">Probar</button>' + (tokenLink() ? '<button class="btn peligro" data-accion="borrar-token">Borrar token</button>' : "") +
+    (listo ? '<button class="btn" data-accion="listo-link">Listo</button>' : "") + "</div>";
   h += '<p class="ayuda">El token queda solo en este aparato: no va en la copia de seguridad, ni en los contratos, ni en la sincronización. En el celular lo pegás una vez.</p>';
   return h;
 }
@@ -1647,9 +1656,12 @@ var ACCIONES = {
     var t = ($("link-token") && $("link-token").value || "").trim();
     if (!t) { toast("Pegá el token en el campo"); return "sin-render"; }
     guardarTokenLink(t);
+    editandoLink = false;
     toast("Token guardado ✔. Ahora tocá «Probar»");
   },
   "borrar-token": function () { if (confirm("¿Borrar el token de este aparato?")) guardarTokenLink(""); },
+  "editar-link": function () { editandoLink = true; },
+  "listo-link": function () { editandoLink = false; },
   "probar-link": function () {
     var cab = '<h2>LINK PARA FIRMAR <button class="btn chico" data-accion="cerrar">Cerrar</button></h2>';
     abrirModal(cab + '<div class="aviso">Probando conexión con GitHub…</div>');
