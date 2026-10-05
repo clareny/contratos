@@ -1880,6 +1880,7 @@ function iniciar() {
   guardar();
   renderTodo();
   programarSync(800);
+  if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(function () {});
 }
 
 document.addEventListener("DOMContentLoaded", iniciar);
