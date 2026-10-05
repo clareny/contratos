@@ -1428,6 +1428,20 @@ function pdfIphoneAccion() {
 
 var editandoLink = false;
 
+/* El usuario de GitHub va en la configuración y puede quedar vacío (copia de seguridad vieja); el token sabe de quién es. */
+function completarUsuarioGitHub() {
+  var t = tokenLink();
+  if (!t || datosLink(cfg).usuario) return Promise.resolve(false);
+  return usuarioDelToken(t).then(function (login) {
+    if (!login || datosLink(cfg).usuario) return false;
+    cfg.linkFirma = Object.assign({}, cfg.linkFirma, { usuario: login });
+    guardar();
+    renderTodo();
+    programarSync(300);
+    return true;
+  });
+}
+
 function seccionConfigLink() {
   var listo = linkConfigurado(cfg);
   var h = '<h3 class="sec" id="config-link">Link para firmar (iPhone)</h3>';
@@ -1457,15 +1471,16 @@ function seccionConfigLink() {
 function seccionConfigSync() {
   var d = datosSync(cfg);
   var h = '<h3 class="sec" id="config-sync">Sincronizar compu y celular</h3>';
-  h += '<p class="ayuda">Tus contratos quedan iguales en la compu y en el celular. Se guardan <b>cifrados</b> en un repositorio <b>privado</b> de tu GitHub: GitHub no los puede leer. Usa el mismo usuario y token de arriba.</p>';
   if (syncActiva()) {
     var est = ultimoEstadoSync;
     h += '<div class="aviso ' + (est.mal ? "mal" : "bien") + '"><b>Sincronización activa ✔</b> Repositorio privado <code>' + esc(d.repo) + "</code>." +
-      (est.texto ? " " + esc(est.texto) + "." : "") + (est.error ? "<br>" + esc(est.error) : "") + "</div>";
-    h += '<div class="fila-botones"><button class="btn primario" data-accion="sincronizar-ahora">Sincronizar ahora</button><button class="btn peligro" data-accion="desactivar-sync">Desactivar en este aparato</button></div>';
-    h += '<p class="ayuda">Se sincroniza solo: al abrir el programa, unos segundos después de cada cambio y cada minuto y medio. En el otro aparato activala con la <b>misma clave</b>. GitHub guarda el historial: si algo sale mal, ninguna versión se pierde.</p>';
+      (est.texto ? " " + esc(est.texto) + "." : "") + (est.error ? "<br>" + esc(est.error) : "") + " Se sincroniza solo: no tenés que hacer nada más.</div>";
+    h += '<div class="fila-botones"><button class="btn" data-accion="sincronizar-ahora">Sincronizar ahora</button><button class="btn peligro" data-accion="desactivar-sync">Desactivar en este aparato</button></div>';
     return h;
   }
+  h += '<p class="ayuda">Tus contratos quedan iguales en la compu y en el celular. Se guardan <b>cifrados</b> en un repositorio <b>privado</b> de tu GitHub: GitHub no los puede leer. Usa el mismo usuario y token de arriba.</p>';
+  if (leerEstadoSync().clave && tokenLink() && !datosLink(cfg).usuario)
+    h += '<div class="aviso info">Ya activaste la sincronización en este aparato, pero falta tu usuario de GitHub. Se completa solo con internet; si no, escribilo arriba en «Link para firmar».</div>';
   h += '<ol class="pasos-link">' +
     "<li>En GitHub tocá <b>New</b>. Nombre: <code>contratos-datos</code>. Elegí <b>Private</b>, marcá <b>Add a README file</b> y tocá <b>Create repository</b>.</li>" +
     "<li>El token de arriba tiene que abrir también ese repositorio: en GitHub, <b>Settings → Developer settings → Fine-grained tokens</b> → tu token → <b>Edit</b> → en «Only select repositories» agregá <code>contratos-datos</code> → <b>Update</b>.</li>" +
@@ -1658,6 +1673,7 @@ var ACCIONES = {
     guardarTokenLink(t);
     editandoLink = false;
     toast("Token guardado ✔. Ahora tocá «Probar»");
+    completarUsuarioGitHub();
   },
   "borrar-token": function () { if (confirm("¿Borrar el token de este aparato?")) guardarTokenLink(""); },
   "editar-link": function () { editandoLink = true; },
@@ -1735,9 +1751,15 @@ var ACCIONES = {
         if (d.tipo !== "clareny-contratos") throw new Error("Archivo no válido");
         if (!confirm("Esto reemplaza tus datos actuales por la copia del " + formatoFecha(String(d.fecha).slice(0, 10)) + ". ¿Continuar?")) return;
         Object.keys(contratos).forEach(function (k) { if (!d.contratos[k]) eliminados[k] = true; });
+        var link = cfg.linkFirma, repoSync = cfg.sync;
         cfg = d.config; contratos = d.contratos;
+        /* La conexión con GitHub es de este aparato: una copia hecha antes de configurarla no la borra. */
+        if (link && link.usuario) cfg.linkFirma = link;
+        if (repoSync && repoSync.repo) cfg.sync = repoSync;
+        normalizarConfig();
         st = contratos[Object.keys(contratos)[0]] || nuevoContrato();
         guardar(); renderTodo(); toast("Copia restaurada ✔");
+        completarUsuarioGitHub();
       } catch (e) { toast("No se pudo restaurar: " + e.message); }
     });
     return "sin-render";
@@ -1886,7 +1908,7 @@ function iniciar() {
   });
 
   document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "visible") programarSync(300);
+    if (document.visibilityState === "visible") { programarSync(300); completarUsuarioGitHub(); }
     else if (timerSync) programarSync(0);
   });
   setInterval(function () { if (document.visibilityState === "visible") programarSync(0); }, 90000);
@@ -1894,6 +1916,7 @@ function iniciar() {
   guardar();
   renderTodo();
   programarSync(800);
+  completarUsuarioGitHub();
   if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(function () {});
 }
 

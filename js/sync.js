@@ -223,10 +223,13 @@ function pasoSync() {
   }
 
   function aplicarConfig(rem) {
-    var contador = cfg.contador || {};
+    var contador = cfg.contador || {}, link = cfg.linkFirma, repoSync = cfg.sync;
     cfg = rem;
     cfg.contador = cfg.contador || {};
     Object.keys(contador).forEach(function (a) { if ((contador[a] || 0) > (cfg.contador[a] || 0)) cfg.contador[a] = contador[a]; });
+    /* Sin usuario o repositorio este aparato dejaría de sincronizar: si al otro le faltan, quedan los de acá. */
+    if (!(cfg.linkFirma && cfg.linkFirma.usuario) && link && link.usuario) cfg.linkFirma = link;
+    if (!(cfg.sync && cfg.sync.repo) && repoSync && repoSync.repo) cfg.sync = repoSync;
     normalizarConfig();
     tocados.config = true;
   }

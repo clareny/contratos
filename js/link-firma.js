@@ -21,6 +21,12 @@ function datosLink(cfg) {
 }
 function linkConfigurado(cfg) { var d = datosLink(cfg); return !!(d.usuario && d.token); }
 
+function usuarioDelToken(token) {
+  return fetch("https://api.github.com/user", { headers: { Authorization: "Bearer " + token, Accept: "application/vnd.github+json" }, cache: "no-store" })
+    .then(function (r) { return r.ok ? r.json() : {}; })
+    .then(function (j) { return j.login || ""; }, function () { return ""; });
+}
+
 function b64DeBytes(bytes) {
   var s = "";
   for (var i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
